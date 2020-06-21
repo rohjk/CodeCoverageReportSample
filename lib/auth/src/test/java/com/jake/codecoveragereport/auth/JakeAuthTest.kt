@@ -9,7 +9,7 @@ import org.mockito.MockitoAnnotations
 
 class JakeAuthTest {
 
-    private lateinit var jakeAuth: JakeAuth
+    lateinit var jakeAuth: JakeAuth
 
     val testUserProfile = UserProfile("testUser", "testPwd")
 
@@ -25,7 +25,7 @@ class JakeAuthTest {
 
         jakeAuth.setUserProfile(userProfile)
 
-        assertEquals(jakeAuth.profile, userProfile)
+        assertEquals(jakeAuth.getUserProfile(), userProfile)
     }
 
     @Test
