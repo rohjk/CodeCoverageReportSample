@@ -1,0 +1,100 @@
+apply plugin: 'jacoco'
+
+/**
+ * Unit Test Code Coverage Report를 생성합니다.
+ * Code Coverage Report를 생성하기 위해서는 1개 이상의 Unit Test Case를 작성해야합니다.
+ * <buildDir>/reports/codeCoverage 경로에 Report가 생성됩니다.
+ *
+ * Quick Start
+ * - Code Coverage Report를 생성하고자 하는 모듈의 build.gradle 파일에 아래의 Script를 추가합니다
+ * '''
+ * // project flavor. if you don't put this option, it will be ignored
+ * ext {
+ *     pFlavor = '<FlavorType>'
+ * }
+ *
+ * apply from: "$rootDir/gradle/codecoverage.gradle"
+ * '''
+ *
+ * - 아래의 명령어로 Task를 실행합니다
+ * '''
+ * ./gradlew :<module>:generateCodeCoverageReports
+ * '''
+ * or
+ * '''
+ * ./gradlew :<module>:test
+ * '''
+ * or
+ * '''
+ * ./gradlew :<module>:testDebugUnitTest
+ * '''
+ */
+
+jacoco {
+    toolVersion = '0.8.5'
+}
+
+String flavor = project.ext.has('pFlavor') ? project.ext.pFlavor : ''
+String dependsOnTask = "test${flavor.capitalize()}DebugUnitTest"
+
+task generateCodeCoverageReports(type: JacocoReport, dependsOn: dependsOnTask) {
+    group = "Reporting"
+    description = "Generate Jaoco Coverage Reports"
+
+    def reportDirPath = "$buildDir/reports/codeCoverage"
+
+    reports {
+        html.enabled true
+        xml.enabled true
+
+        html.destination file("$reportDirPath/${project.name}")
+        xml.destination file("$reportDirPath/${project.name}.xml")
+    }
+
+    def fileFilter =
+            [
+                    '**/R.class',
+                    '**/R$*.class',
+                    '**/BuildConfig.*',
+                    '**/Manifest*.*',
+                    '**/*Test*.*',
+                    'android/**/*.*',
+                    '**/*InjectAdapter*.*',
+                    '**/*StaticInjection*.*',
+                    '**/*ModuleAdapter*.*',
+                    // Dagger
+                    '**/*_Provide*/**',
+                    '**/*_Factory*/**',
+                    '**/*_MembersInjector.class',
+                    '**/*Dagger*'
+            ]
+
+    def javaClassDirPath = "$project.buildDir/intermediates/javac/debug/classes"
+    def kotlinClassDirPath = "$project.buildDir/tmp/kotlin-classes/debug"
+    def coverageExecutionDataPath = "${buildDir}/jacoco/testDebugUnitTest.exec"
+
+    if (!flavor.isEmpty()) {
+        javaClassDirPath = "$project.buildDir/intermediates/javac/${flavor}Debug/classes"
+        kotlinClassDirPath = "$project.buildDir/tmp/kotlin-classes/${flavor}Debug"
+        coverageExecutionDataPath = "${buildDir}/jacoco/test${flavor.capitalize()}DebugUnitTest.exec"
+    }
+
+    def mainJavaSrcPath = "$project.projectDir/src/main/java"
+    def mainKotlinSrcPath = "$project.projectDir/src/main/kotlin"
+
+    sourceDirectories.from = files([mainJavaSrcPath, mainKotlinSrcPath])
+    classDirectories.from = fileTree(
+            dir: javaClassDirPath,
+            excludes: fileFilter
+    ) + fileTree(
+            dir: kotlinClassDirPath,
+            excludes: fileFilter
+    )
+    executionData.from = file(coverageExecutionDataPath)
+}
+
+tasks.all { task ->
+    if (task.name.equals(dependsOnTask)) {
+        task.finalizedBy generateCodeCoverageReports
+    }
+}
